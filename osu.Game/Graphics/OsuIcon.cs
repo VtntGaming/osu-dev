@@ -28,6 +28,7 @@ namespace osu.Game.Graphics
         public static IconUsage EditCircle => get(OsuIconMapping.EditCircle);
         public static IconUsage LeftCircle => get(OsuIconMapping.LeftCircle);
         public static IconUsage RightCircle => get(OsuIconMapping.RightCircle);
+        public static IconUsage Undo => get(OsuIconMapping.Undo);
 
         public static IconUsage Audio => get(OsuIconMapping.Audio);
         public static IconUsage Beatmap => get(OsuIconMapping.Beatmap);
@@ -99,6 +100,7 @@ namespace osu.Game.Graphics
         public static IconUsage EditorSelect => get(OsuIconMapping.EditorSelect);
         public static IconUsage EditorSound => get(OsuIconMapping.EditorSound);
         public static IconUsage EditorWhistle => get(OsuIconMapping.EditorWhistle);
+        public static IconUsage EditorClap => get(OsuIconMapping.EditorClap);
         public static IconUsage Tortoise => get(OsuIconMapping.Tortoise);
         public static IconUsage Hare => get(OsuIconMapping.Hare);
 
@@ -386,6 +388,9 @@ namespace osu.Game.Graphics
             [Description(@"twitter")]
             Twitter,
 
+            [Description(@"undo")]
+            Undo,
+
             [Description(@"user-interface")]
             UserInterface,
 
@@ -421,6 +426,9 @@ namespace osu.Game.Graphics
 
             [Description(@"Editor/whistle")]
             EditorWhistle,
+
+            [Description(@"Editor/clap")]
+            EditorClap,
 
             [Description(@"tortoise")]
             Tortoise,
@@ -680,11 +688,11 @@ namespace osu.Game.Graphics
 
             public class Glyph : ITexturedCharacterGlyph
             {
-                public float XOffset => default;
-                public float YOffset => default;
-                public float XAdvance => default;
-                public float Baseline => default;
-                public char Character => default;
+                public float XOffset => 0;
+                public float YOffset => 0;
+                public float XAdvance => 0;
+                public float Baseline => 0;
+                public char Character => '\0';
 
                 public float GetKerning<T>(T lastGlyph) where T : ICharacterGlyph => throw new NotImplementedException();
 
