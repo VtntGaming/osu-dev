@@ -30,8 +30,6 @@ namespace osu.Game.Rulesets.Mods
 
         public override ModType Type => ModType.DifficultyIncrease;
 
-        public override double ScoreMultiplier => 1.0;
-
         public override Type[] IncompatibleMods => base.IncompatibleMods.Concat(new[] { typeof(ModEasyWithExtraLives), typeof(ModPerfect) }).ToArray();
 
         public override bool RequiresConfiguration => false;
@@ -108,7 +106,7 @@ namespace osu.Game.Rulesets.Mods
     {
         public MinimumAccuracySlider()
         {
-            KeyboardStep = 0.01f;
+            KeyboardStep = 0.001f;
         }
     }
 }

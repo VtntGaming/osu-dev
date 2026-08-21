@@ -1,7 +1,6 @@
 // Copyright (c) ppy Pty Ltd <contact@ppy.sh>. Licensed under the MIT Licence.
 // See the LICENCE file in the repository root for full licence text.
 
-using System.Diagnostics;
 using System.Linq;
 using System.Threading.Tasks;
 using osu.Framework.Allocation;
@@ -11,7 +10,6 @@ using osu.Framework.Graphics;
 using osu.Framework.Localisation;
 using osu.Framework.Logging;
 using osu.Game.Audio;
-using osu.Game.Online.Multiplayer.MatchTypes.RankedPlay;
 using osu.Game.Screens.OnlinePlay.Matchmaking.RankedPlay.Card;
 using osu.Game.Screens.OnlinePlay.Matchmaking.RankedPlay.Components;
 using osu.Game.Screens.OnlinePlay.Matchmaking.RankedPlay.Hand;
@@ -23,10 +21,10 @@ namespace osu.Game.Screens.OnlinePlay.Matchmaking.RankedPlay
     {
         public CardFlow CenterRow { get; private set; } = null!;
 
-        protected override LocalisableString StageHeading => "Pick Phase";
-        protected override LocalisableString StageCaption => "Waiting for your opponent...";
+        public override bool ShowStageOverlay => true;
+        public override LocalisableString StageHeading => "Pick Phase";
 
-        protected override RankedPlayColourScheme ColourScheme => RankedPlayColourScheme.Red;
+        protected override RankedPlayColourScheme ColourScheme => RankedPlayColourScheme.RED;
 
         private PlayerHandOfCards playerHand = null!;
         private OpponentHandOfCards opponentHand = null!;
@@ -39,13 +37,14 @@ namespace osu.Game.Screens.OnlinePlay.Matchmaking.RankedPlay
         private const int card_play_samples = 2;
         private Sample?[]? cardPlaySamples;
 
+        public OpponentPickScreen()
+        {
+            StageCaption = "Waiting for your opponent...";
+        }
+
         [BackgroundDependencyLoader]
         private void load(AudioManager audio)
         {
-            var matchState = Client.Room?.MatchState as RankedPlayRoomState;
-
-            Debug.Assert(matchState != null);
-
             Children =
             [
                 CenterRow = new CardFlow

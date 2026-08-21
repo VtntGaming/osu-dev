@@ -2,7 +2,6 @@
 // See the LICENCE file in the repository root for full licence text.
 
 using System;
-using System.Diagnostics;
 using System.Linq;
 using osu.Framework.Allocation;
 using osu.Framework.Audio;
@@ -24,12 +23,13 @@ namespace osu.Game.Screens.OnlinePlay.Matchmaking.RankedPlay
     public partial class PickScreen : RankedPlaySubScreen
     {
         // When the 'time running out' warning sample starts to play (in remaining seconds)
-        private const int warning_time_threshold = 10;
+        private const int warning_time_threshold = 11;
 
         public CardFlow CenterRow { get; private set; } = null!;
 
-        protected override LocalisableString StageHeading => "Pick Phase";
-        protected override LocalisableString StageCaption => "It's your turn to play a card!";
+        public override bool ShowStageOverlay => true;
+
+        public override LocalisableString StageHeading => "Pick Phase";
 
         private PlayerHandOfCards playerHand = null!;
         private OpponentHandOfCards opponentHand = null!;
@@ -44,7 +44,12 @@ namespace osu.Game.Screens.OnlinePlay.Matchmaking.RankedPlay
 
         private Sample? timeRunningOutSample;
         private SampleChannel? timeRunningOutSampleChannel;
-        private Sample? timeUpBuzzerSample;
+
+        private Sample? finalCountdownSample;
+        private double? lastFinalCountdownSamplePlayback;
+
+        private Sample? timeUpSample;
+        private bool finalBuzzerPlayed;
 
         private DateTimeOffset stageEndTime;
         private TimeSpan stageDuration;
@@ -54,13 +59,14 @@ namespace osu.Game.Screens.OnlinePlay.Matchmaking.RankedPlay
         /// </summary>
         private bool hasPlayedCard;
 
+        public PickScreen()
+        {
+            StageCaption = "It's your turn to play a card!";
+        }
+
         [BackgroundDependencyLoader]
         private void load(AudioManager audio)
         {
-            var matchState = Client.Room?.MatchState as RankedPlayRoomState;
-
-            Debug.Assert(matchState != null);
-
             Children =
             [
                 CenterRow = new CardFlow
@@ -101,7 +107,8 @@ namespace osu.Game.Screens.OnlinePlay.Matchmaking.RankedPlay
                 cardPlaySamples[i] = audio.Samples.Get($@"Multiplayer/Matchmaking/Ranked/card-play-{1 + i}");
 
             timeRunningOutSample = audio.Samples.Get(@"Multiplayer/Matchmaking/Ranked/time-running-out");
-            timeUpBuzzerSample = audio.Samples.Get(@"Multiplayer/Matchmaking/Ranked/time-up");
+            finalCountdownSample = audio.Samples.Get(@"Multiplayer/Matchmaking/Ranked/time-running-out-final");
+            timeUpSample = audio.Samples.Get(@"Multiplayer/Matchmaking/Ranked/time-up");
         }
 
         protected override void LoadComplete()
@@ -120,15 +127,41 @@ namespace osu.Game.Screens.OnlinePlay.Matchmaking.RankedPlay
             }
         }
 
-        private bool shouldPlayWarningSample
+        private bool warningSamplesEnabled
             => matchInfo.Stage.Value == RankedPlayStage.CardPlay
                && stageDuration > TimeSpan.FromSeconds(warning_time_threshold)
-               && stageEndTime - DateTimeOffset.Now < TimeSpan.FromSeconds(warning_time_threshold)
                && !hasPlayedCard;
+
+        private bool shouldPlayWarningSample
+            => warningSamplesEnabled
+               && stageEndTime - DateTimeOffset.Now > TimeSpan.FromSeconds(0)
+               && stageEndTime - DateTimeOffset.Now <= TimeSpan.FromSeconds(warning_time_threshold);
+
+        private bool shouldPlayFinalWarningSamples
+            => warningSamplesEnabled
+               && stageEndTime - DateTimeOffset.Now > TimeSpan.FromSeconds(0)
+               && stageEndTime - DateTimeOffset.Now < TimeSpan.FromSeconds(4);
+
+        private bool shouldPlayFinalBuzzer
+            => warningSamplesEnabled
+               && !finalBuzzerPlayed
+               && stageEndTime - DateTimeOffset.Now <= TimeSpan.FromSeconds(0);
 
         protected override void Update()
         {
             base.Update();
+
+            if (shouldPlayFinalWarningSamples && (lastFinalCountdownSamplePlayback == null || Time.Current - lastFinalCountdownSamplePlayback > 1000))
+            {
+                finalCountdownSample?.Play();
+                lastFinalCountdownSamplePlayback = Time.Current;
+            }
+
+            if (shouldPlayFinalBuzzer)
+            {
+                timeUpSample?.Play();
+                finalBuzzerPlayed = true;
+            }
 
             if (shouldPlayWarningSample)
             {
@@ -203,18 +236,16 @@ namespace osu.Game.Screens.OnlinePlay.Matchmaking.RankedPlay
 
             stageEndTime = DateTimeOffset.Now + countdown.TimeRemaining;
             stageDuration = countdown.TimeRemaining;
+            finalBuzzerPlayed = false;
         });
 
         private void onCountdownStopped(MultiplayerCountdown countdown) => Scheduler.Add(() =>
         {
-            if (countdown is not RankedPlayStageCountdown stageCountdown)
+            if (countdown is not RankedPlayStageCountdown)
                 return;
 
             stageEndTime = DateTimeOffset.Now;
             stageDuration = TimeSpan.Zero;
-
-            if (stageCountdown.Stage == RankedPlayStage.CardPlay && !hasPlayedCard)
-                timeUpBuzzerSample?.Play();
         });
 
         private void onPlayButtonClicked()

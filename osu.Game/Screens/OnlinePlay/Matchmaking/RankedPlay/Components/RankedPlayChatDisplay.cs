@@ -5,11 +5,12 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using osu.Framework.Allocation;
+using osu.Framework.Audio;
+using osu.Framework.Audio.Sample;
 using osu.Framework.Extensions.Color4Extensions;
 using osu.Framework.Graphics;
 using osu.Framework.Graphics.Containers;
 using osu.Framework.Graphics.Shapes;
-using osu.Framework.Graphics.Transforms;
 using osu.Framework.Graphics.UserInterface;
 using osu.Framework.Input.Bindings;
 using osu.Framework.Input.Events;
@@ -27,7 +28,7 @@ using osuTK.Graphics;
 
 namespace osu.Game.Screens.OnlinePlay.Matchmaking.RankedPlay.Components
 {
-    public partial class RankedPlayChatDisplay : CompositeDrawable, IKeyBindingHandler<GlobalAction>
+    public partial class RankedPlayChatDisplay : VisibilityContainer, IKeyBindingHandler<GlobalAction>
     {
         [Resolved]
         private ChannelManager? channelManager { get; set; }
@@ -90,8 +91,13 @@ namespace osu.Game.Screens.OnlinePlay.Matchmaking.RankedPlay.Components
             textbox.OnCommit += onCommit;
 
             channel = channelManager?.JoinChannel(new Channel { Id = room.ChannelID, Type = ChannelType.Multiplayer, Name = $"#lazermp_{room.RoomID}" });
+
             if (channel != null)
+            {
                 channel.NewMessagesArrived += onNewMessagesArrived;
+
+                textbox.Current.BindTo(channel.TextBoxMessage);
+            }
         }
 
         private void onCommit(TextBox sender, bool newText)
@@ -162,7 +168,7 @@ namespace osu.Game.Screens.OnlinePlay.Matchmaking.RankedPlay.Components
         {
         }
 
-        public void Appear()
+        protected override void PopIn()
         {
             FinishTransforms();
 
@@ -172,12 +178,12 @@ namespace osu.Game.Screens.OnlinePlay.Matchmaking.RankedPlay.Components
                 .FadeIn(240, Easing.OutCubic);
         }
 
-        public TransformSequence<RankedPlayChatDisplay> Disappear()
+        protected override void PopOut()
         {
             FinishTransforms();
 
-            return this.FadeOut(240, Easing.InOutCubic)
-                       .MoveToY(150f, 240, Easing.InOutCubic);
+            this.FadeOut(240, Easing.InOutCubic)
+                .MoveToY(150f, 240, Easing.InOutCubic);
         }
 
         protected override void Dispose(bool isDisposing)
@@ -185,7 +191,10 @@ namespace osu.Game.Screens.OnlinePlay.Matchmaking.RankedPlay.Components
             base.Dispose(isDisposing);
 
             if (channel != null)
+            {
                 channel.NewMessagesArrived -= onNewMessagesArrived;
+                textbox.Current.UnbindFrom(channel.TextBoxMessage);
+            }
         }
 
         private partial class ChatTextBox : StandAloneChatDisplay.ChatTextBox
@@ -221,6 +230,9 @@ namespace osu.Game.Screens.OnlinePlay.Matchmaking.RankedPlay.Components
 
             private bool expanded;
 
+            private Sample messageReceivedSample = null!;
+            private double? lastSamplePlayback;
+
             public BubbleChatHistory()
             {
                 AutoSizeAxes = Axes.Y;
@@ -230,6 +242,12 @@ namespace osu.Game.Screens.OnlinePlay.Matchmaking.RankedPlay.Components
                     RelativeSizeAxes = Axes.X,
                     AutoSizeAxes = Axes.Y,
                 };
+            }
+
+            [BackgroundDependencyLoader]
+            private void load(AudioManager audio)
+            {
+                messageReceivedSample = audio.Samples.Get(@"Multiplayer/Matchmaking/Ranked/message");
             }
 
             /// <summary>
@@ -301,12 +319,23 @@ namespace osu.Game.Screens.OnlinePlay.Matchmaking.RankedPlay.Components
 
                 newMessage.Show();
 
+                playSample();
+
                 // If not in the expanded state, hide the new message after a short while.
                 if (!expanded)
                 {
                     using (BeginDelayedSequence(time_before_disappear))
                         newMessage.Hide();
                 }
+            }
+
+            private void playSample()
+            {
+                if (lastSamplePlayback != null && Time.Current - lastSamplePlayback < 100)
+                    return;
+
+                messageReceivedSample.Play();
+                lastSamplePlayback = Time.Current;
             }
 
             private partial class MessageBubble : CompositeDrawable
@@ -348,8 +377,8 @@ namespace osu.Game.Screens.OnlinePlay.Matchmaking.RankedPlay.Components
                                 {
                                     RelativeSizeAxes = Axes.Both,
                                     Colour = api.LocalUser.Value.Id == user.Id
-                                        ? RankedPlayColourScheme.Blue.PrimaryDarkest
-                                        : RankedPlayColourScheme.Red.PrimaryDarkest,
+                                        ? RankedPlayColourScheme.BLUE.PrimaryDarkest
+                                        : RankedPlayColourScheme.RED.PrimaryDarkest,
                                 },
                                 new Container
                                 {
